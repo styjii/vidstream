@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VidStream — Lecteur</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f3; --bg2: #ffffff; --bg3: #ebebea;
+    --text: #1a1a19; --text2: #5a5a58; --text3: #9a9a98;
+    --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.18);
+    --accent: #E63946; --radius: 8px; --radius-lg: 12px;
+    --info-text: #0C447C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1a1a18; --bg2:#242422; --bg3:#2e2e2c; --text:#e8e8e6; --text2:#a0a09e; --text3:#686866; --border:rgba(255,255,255,0.1); --border2:rgba(255,255,255,0.18); --info-text:#85B7EB; }
+  }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  nav { background: var(--bg2); border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 14px; padding: 0 20px; height: 52px; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; color: var(--text); text-decoration: none; }
+  .logo-icon { width: 30px; height: 30px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; }
+  .nav-back { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); cursor: pointer; padding: 6px 12px; border-radius: var(--radius); transition: background .15s; }
+  .nav-back:hover { background: var(--bg3); color: var(--text); }
+  .layout { display: flex; }
+  .player-col { flex: 1; padding: 20px 18px; }
+  .sidebar-col { width: 260px; border-left: 0.5px solid var(--border); background: var(--bg2); padding: 16px 14px; flex-shrink: 0; min-height: calc(100vh - 52px); }
+  .video-wrap { background: #111; border-radius: var(--radius-lg); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; margin-bottom: 14px; }
+  .play-btn { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; transition: background .15s; }
+  .play-btn:hover { background: rgba(255,255,255,0.25); }
+  .play-btn i { color: #fff; font-size: 28px; }
+  .progress-bar { width: 100%; height: 4px; background: var(--border2); border-radius: 2px; cursor: pointer; margin-bottom: 10px; position: relative; }
+  .progress-fill { width: 35%; height: 100%; background: var(--accent); border-radius: 2px; position: relative; }
+  .progress-thumb { position: absolute; right: -6px; top: -4px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+  .controls { display: flex; align-items: center; gap: 12px; }
+  .ctrl-btn { background: none; border: none; cursor: pointer; padding: 4px; color: var(--text2); display: flex; align-items: center; border-radius: 6px; transition: background .15s, color .15s; }
+  .ctrl-btn:hover { background: var(--bg3); color: var(--text); }
+  .ctrl-btn i { font-size: 20px; }
+  .ctrl-btn i.lg { font-size: 26px; color: var(--text); }
+  .time { font-size: 12px; color: var(--text3); margin: 0 4px; font-variant-numeric: tabular-nums; }
+  .vol-wrap { display: flex; align-items: center; gap: 6px; }
+  .vol-bar { width: 70px; height: 3px; background: var(--border2); border-radius: 2px; cursor: pointer; }
+  .vol-fill { width: 70%; height: 100%; background: var(--text2); border-radius: 2px; }
+  .ctrl-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .speed-badge { font-size: 11px; font-weight: 600; color: var(--text2); border: 0.5px solid var(--border2); border-radius: 4px; padding: 2px 7px; cursor: pointer; }
+  .speed-badge:hover { background: var(--bg3); }
+  .video-meta { margin-top: 14px; }
+  .vtitle { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .vmeta-row { font-size: 12px; color: var(--text3); display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .vmeta-sep { color: var(--border2); }
+  .vtags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 11px; background: var(--bg3); color: var(--text2); padding: 3px 10px; border-radius: 10px; }
+  .sidebar-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+  .rcard { display: flex; gap: 9px; padding: 8px 0; border-bottom: 0.5px solid var(--border); cursor: pointer; transition: background .15s; border-radius: 6px; }
+  .rcard:hover { background: var(--bg3); padding: 8px 6px; }
+  .rcard:last-child { border-bottom: none; }
+  .rthumb { width: 76px; height: 44px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .rthumb i { color: rgba(255,255,255,.3); font-size: 15px; }
+  .rmeta { flex: 1; min-width: 0; }
+  .rtitle { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+  .rsub { font-size: 11px; color: var(--text3); }
+  .t1{background:#1a1a2e} .t2{background:#16213e} .t3{background:#0f3460} .t4{background:#533483} .t5{background:#1b4332}
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="01_accueil.html"><div class="logo-icon"><i class="ti ti-player-play"></i></div>VidStream</a>
+  <div class="nav-back"><i class="ti ti-arrow-left"></i> Retour</div>
+</nav>
+<div class="layout">
+  <div class="player-col">
+    <div class="video-wrap">
+      <div class="play-btn"><i class="ti ti-player-pause"></i></div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill"><div class="progress-thumb"></div></div></div>
+    <div class="controls">
+      <button class="ctrl-btn" title="Reculer 10s"><i class="ti ti-player-skip-back"></i></button>
+      <button class="ctrl-btn" title="Lecture/Pause"><i class="ti ti-player-pause lg"></i></button>
+      <button class="ctrl-btn" title="Avancer 10s"><i class="ti ti-player-skip-forward"></i></button>
+      <span class="time">32:14 / 1:52:10</span>
+      <div class="vol-wrap">
+        <button class="ctrl-btn" title="Volume"><i class="ti ti-volume" style="font-size:19px"></i></button>
+        <div class="vol-bar"><div class="vol-fill"></div></div>
+      </div>
+      <div class="ctrl-right">
+        <span class="speed-badge">1×</span>
+        <button class="ctrl-btn" title="Sous-titres"><i class="ti ti-subtitles" style="font-size:19px"></i></button>
+        <button class="ctrl-btn" title="Plein écran"><i class="ti ti-arrows-maximize" style="font-size:19px"></i></button>
+      </div>
+    </div>
+    <div class="video-meta">
+      <div class="vtitle">Inception (2010)</div>
+      <div class="vmeta-row">
+        <span>Films</span><span class="vmeta-sep">·</span>
+        <span>2.1 Go</span><span class="vmeta-sep">·</span>
+        <span>mkv · 1080p</span><span class="vmeta-sep">·</span>
+        <span>Scanné le 12 juin 2025</span>
+      </div>
+      <div class="vtags">
+        <span class="tag">Science-fiction</span>
+        <span class="tag">Thriller</span>
+        <span class="tag">Christopher Nolan</span>
+      </div>
+    </div>
+  </div>
+  <aside class="sidebar-col">
+    <div class="sidebar-title">À regarder ensuite</div>
+    <div class="rcard"><div class="rthumb t2"><i class="ti ti-player-play"></i></div><div class="rmeta"><div class="rtitle">Interstellar (2014)</div><div class="rsub">2:09:00 · 3.4 Go</div></div></div>
+    <div class="rcard"><div class="rthumb t3"><i class="ti ti-player-play"></i></div><div class="rmeta"><div class="rtitle">The Dark Knight</div><div class="rsub">2:28:00 · 2.8 Go</div></div></div>
+    <div class="rcard"><div class="rthumb t4"><i class="ti ti-player-play"></i></div><div class="rmeta"><div class="rtitle">Dune Part One</div><div class="rsub">1:41:00 · 4.1 Go</div></div></div>
+    <div class="rcard"><div class="rthumb t5"><i class="ti ti-player-play"></i></div><div class="rmeta"><div class="rtitle">The Last of Us S01E01</div><div class="rsub">1:02:00 · 1.2 Go</div></div></div>
+    <div class="rcard"><div class="rthumb t1"><i class="ti ti-player-play"></i></div><div class="rmeta"><div class="rtitle">Breaking Bad S01E01</div><div class="rsub">58:22 · 820 Mo</div></div></div>
+  </aside>
+</div>
+</body>
+</html>

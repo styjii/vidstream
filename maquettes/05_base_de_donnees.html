@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VidStream — Schéma base de données SQLite</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#f5f5f3; --bg2:#ffffff; --bg3:#ebebea;
+    --text:#1a1a19; --text2:#5a5a58; --text3:#9a9a98;
+    --border:rgba(0,0,0,0.1); --border2:rgba(0,0,0,0.22);
+    --accent:#E63946; --radius:8px; --radius-lg:12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1a1a18; --bg2:#242422; --bg3:#2e2e2c; --text:#e8e8e6; --text2:#a0a09e; --text3:#686866; --border:rgba(255,255,255,0.1); --border2:rgba(255,255,255,0.22); }
+  }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 32px 24px; }
+  h1 { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: var(--text3); margin-bottom: 28px; }
+  .erd-wrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .table-card { background: var(--bg2); border: 0.5px solid var(--border2); border-radius: var(--radius-lg); overflow: hidden; }
+  .table-header { padding: 10px 14px; border-bottom: 0.5px solid var(--border2); display: flex; align-items: center; gap: 8px; }
+  .table-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .table-name { font-size: 13px; font-weight: 600; color: var(--text); font-family: 'Courier New', monospace; }
+  .table-desc { font-size: 11px; color: var(--text3); margin-top: 1px; font-family: system-ui, sans-serif; }
+  .field-list { padding: 6px 0; }
+  .field { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 12px; font-family: 'Courier New', monospace; }
+  .field:hover { background: var(--bg3); }
+  .field-name { color: var(--text); flex: 1; }
+  .field-type { color: var(--text3); font-size: 11px; }
+  .badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; flex-shrink: 0; font-family: system-ui, sans-serif; letter-spacing: .03em; }
+  .pk { background: #FAEEDA; color: #633806; }
+  .fk { background: #E6F1FB; color: #0C447C; }
+  @media (prefers-color-scheme: dark) {
+    .pk { background: #2e2200; color: #FAC775; }
+    .fk { background: #0c1e2e; color: #85B7EB; }
+  }
+  .relations { margin-top: 28px; }
+  .relations h2 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 14px; }
+  .rel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  .rel-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 10px 14px; display: flex; align-items: flex-start; gap: 10px; }
+  .rel-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .rel-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; font-family: 'Courier New', monospace; }
+  .rel-desc { font-size: 11px; color: var(--text3); font-family: system-ui, sans-serif; }
+  .rel-type { font-size: 10px; background: var(--bg3); color: var(--text2); padding: 1px 6px; border-radius: 4px; display: inline-block; margin-top: 3px; font-weight: 500; }
+  /* Color per table */
+  .c-blue { background: #E6F1FB; } .c-blue i { color: #0C447C; }
+  .c-purple { background: #EEEDFE; } .c-purple i { color: #3C3489; }
+  .c-teal { background: #E1F5EE; } .c-teal i { color: #085041; }
+  .c-amber { background: #FAEEDA; } .c-amber i { color: #633806; }
+  .c-coral { background: #FAECE7; } .c-coral i { color: #712B13; }
+  @media (prefers-color-scheme: dark) {
+    .c-blue { background: #0c1e2e; } .c-blue i { color: #85B7EB; }
+    .c-purple { background: #1c1a3e; } .c-purple i { color: #AFA9EC; }
+    .c-teal { background: #0a1e16; } .c-teal i { color: #5DCAA5; }
+    .c-amber { background: #2e1e00; } .c-amber i { color: #EF9F27; }
+    .c-coral { background: #2e1008; } .c-coral i { color: #F0997B; }
+  }
+</style>
+</head>
+<body>
+<h1>Schéma base de données SQLite — VidStream</h1>
+<p class="subtitle">5 tables · SQLite via Django ORM · Fichier : <code>db.sqlite3</code></p>
+
+<div class="erd-wrap">
+  <!-- CATEGORY -->
+  <div class="table-card">
+    <div class="table-header c-blue">
+      <div class="table-icon c-blue"><i>📁</i></div>
+      <div><div class="table-name">CATEGORY</div><div class="table-desc">Dossiers scannés</div></div>
+    </div>
+    <div class="field-list">
+      <div class="field"><span class="badge pk">PK</span><span class="field-name">id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="field-name">name</span><span class="field-type">VARCHAR(100)</span></div>
+      <div class="field"><span class="field-name">folder_path</span><span class="field-type">TEXT</span></div>
+      <div class="field"><span class="field-name">icon</span><span class="field-type">VARCHAR(50)</span></div>
+      <div class="field"><span class="field-name">created_at</span><span class="field-type">DATETIME</span></div>
+    </div>
+  </div>
+
+  <!-- VIDEO -->
+  <div class="table-card">
+    <div class="table-header c-purple">
+      <div class="table-icon c-purple"><i>🎬</i></div>
+      <div><div class="table-name">VIDEO</div><div class="table-desc">Fichiers vidéo indexés</div></div>
+    </div>
+    <div class="field-list">
+      <div class="field"><span class="badge pk">PK</span><span class="field-name">id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="badge fk">FK</span><span class="field-name">category_id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="field-name">title</span><span class="field-type">VARCHAR(255)</span></div>
+      <div class="field"><span class="field-name">file_path</span><span class="field-type">TEXT</span></div>
+      <div class="field"><span class="field-name">thumbnail_path</span><span class="field-type">TEXT</span></div>
+      <div class="field"><span class="field-name">duration_sec</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="field-name">file_size_mb</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="field-name">format</span><span class="field-type">VARCHAR(10)</span></div>
+      <div class="field"><span class="field-name">resolution</span><span class="field-type">VARCHAR(20)</span></div>
+      <div class="field"><span class="field-name">scanned_at</span><span class="field-type">DATETIME</span></div>
+      <div class="field"><span class="field-name">last_watched</span><span class="field-type">DATETIME</span></div>
+    </div>
+  </div>
+
+  <!-- DEVICE -->
+  <div class="table-card">
+    <div class="table-header c-teal">
+      <div class="table-icon c-teal"><i>💻</i></div>
+      <div><div class="table-name">DEVICE</div><div class="table-desc">Appareils LAN</div></div>
+    </div>
+    <div class="field-list">
+      <div class="field"><span class="badge pk">PK</span><span class="field-name">id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="field-name">name</span><span class="field-type">VARCHAR(100)</span></div>
+      <div class="field"><span class="field-name">ip_address</span><span class="field-type">VARCHAR(45)</span></div>
+      <div class="field"><span class="field-name">mac_address</span><span class="field-type">VARCHAR(17)</span></div>
+      <div class="field"><span class="field-name">first_seen</span><span class="field-type">DATETIME</span></div>
+      <div class="field"><span class="field-name">last_seen</span><span class="field-type">DATETIME</span></div>
+    </div>
+  </div>
+
+  <!-- WATCH_HISTORY -->
+  <div class="table-card">
+    <div class="table-header c-amber">
+      <div class="table-icon c-amber"><i>⏱️</i></div>
+      <div><div class="table-name">WATCH_HISTORY</div><div class="table-desc">Historique de lecture</div></div>
+    </div>
+    <div class="field-list">
+      <div class="field"><span class="badge pk">PK</span><span class="field-name">id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="badge fk">FK</span><span class="field-name">video_id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="badge fk">FK</span><span class="field-name">device_id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="field-name">progress_sec</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="field-name">completed</span><span class="field-type">BOOLEAN</span></div>
+      <div class="field"><span class="field-name">watched_at</span><span class="field-type">DATETIME</span></div>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="table-card">
+    <div class="table-header c-coral">
+      <div class="table-icon c-coral"><i>📤</i></div>
+      <div><div class="table-name">UPLOAD</div><div class="table-desc">Fichiers reçus du LAN</div></div>
+    </div>
+    <div class="field-list">
+      <div class="field"><span class="badge pk">PK</span><span class="field-name">id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="badge fk">FK</span><span class="field-name">video_id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="badge fk">FK</span><span class="field-name">device_id</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="field-name">original_filename</span><span class="field-type">VARCHAR(255)</span></div>
+      <div class="field"><span class="field-name">file_size_mb</span><span class="field-type">INTEGER</span></div>
+      <div class="field"><span class="field-name">status</span><span class="field-type">VARCHAR(20)</span></div>
+      <div class="field"><span class="field-name">uploaded_at</span><span class="field-type">DATETIME</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="relations">
+  <h2>Relations entre tables</h2>
+  <div class="rel-grid">
+    <div class="rel-card">
+      <div class="rel-icon">↗</div>
+      <div>
+        <div class="rel-title">CATEGORY → VIDEO</div>
+        <div class="rel-desc">Une catégorie contient plusieurs vidéos. Chaque vidéo appartient à un seul dossier scanné.</div>
+        <span class="rel-type">1 → N</span>
+      </div>
+    </div>
+    <div class="rel-card">
+      <div class="rel-icon">↗</div>
+      <div>
+        <div class="rel-title">VIDEO → WATCH_HISTORY</div>
+        <div class="rel-desc">Une vidéo peut avoir plusieurs entrées d'historique (plusieurs appareils, plusieurs sessions).</div>
+        <span class="rel-type">1 → N</span>
+      </div>
+    </div>
+    <div class="rel-card">
+      <div class="rel-icon">↗</div>
+      <div>
+        <div class="rel-title">DEVICE → WATCH_HISTORY</div>
+        <div class="rel-desc">Un appareil LAN peut avoir regardé plusieurs vidéos, chacune avec sa progression sauvegardée.</div>
+        <span class="rel-type">1 → N</span>
+      </div>
+    </div>
+    <div class="rel-card">
+      <div class="rel-icon">↗</div>
+      <div>
+        <div class="rel-title">VIDEO → UPLOAD</div>
+        <div class="rel-desc">Une vidéo uploadée correspond à un enregistrement UPLOAD qui trace son origine réseau.</div>
+        <span class="rel-type">1 → 1</span>
+      </div>
+    </div>
+    <div class="rel-card">
+      <div class="rel-icon">↗</div>
+      <div>
+        <div class="rel-title">DEVICE → UPLOAD</div>
+        <div class="rel-desc">Un appareil peut envoyer plusieurs vidéos vers le serveur. Chaque upload connaît sa source.</div>
+        <span class="rel-type">1 → N</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

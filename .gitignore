@@ -1,0 +1,101 @@
+# ============================================================
+#  VidStream — .gitignore
+#  Stack : Django (backend) + React (frontend) + SQLite
+# ============================================================
+
+# ------------------------------------------------------------
+#  Python / Django
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+ENV/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Migrations (à décommenter si tu veux les ignorer)
+# */migrations/
+
+# Fichiers de collecte statiques Django
+staticfiles/
+static_root/
+
+# ------------------------------------------------------------
+#  Médias — fichiers vidéo et miniatures (NE PAS versionner)
+# ------------------------------------------------------------
+media/
+backend/media/
+uploads/
+thumbnails/
+
+# ------------------------------------------------------------
+#  Variables d'environnement et secrets
+# ------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+*.env
+secrets.json
+
+# ------------------------------------------------------------
+#  React / Node.js (frontend)
+# ------------------------------------------------------------
+frontend/node_modules/
+node_modules/
+frontend/build/
+frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# Cache React / Vite
+frontend/.vite/
+.cache/
+.parcel-cache/
+
+# ------------------------------------------------------------
+#  IDE et éditeurs
+# ------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ------------------------------------------------------------
+#  Tests et couverture
+# ------------------------------------------------------------
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+*.cover
+
+# ------------------------------------------------------------
+#  Divers
+# ------------------------------------------------------------
+*.bak
+*.tmp
+*.orig
