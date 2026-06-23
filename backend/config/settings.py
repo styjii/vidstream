@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'drf_yasg',
     'videos',
 ]
 
@@ -104,6 +105,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
     ],
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
@@ -120,9 +122,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Video folders to scan on the local machine
 VIDEO_SCAN_FOLDERS = [
-    {'name': 'Movies',  'path': '/home/user/Videos/Films'},
-    {'name': 'Series',  'path': '/home/user/Videos/Séries'},
-    {'name': 'Music',   'path': '/home/user/Videos/Musique'},
+    {'name': 'Movies',  'path': '/home/styjii/Vidéos/Films'},
+    {'name': 'Series',  'path': '/home/styjii/Vidéos/Séries'},
+    {'name': 'Music',   'path': '/home/styjii/Vidéos/Musique'},
     {'name': 'Uploads', 'path': str(MEDIA_ROOT / 'uploads')},
 ]
 
