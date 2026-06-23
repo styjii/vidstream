@@ -1,7 +1,11 @@
 asgiref==3.11.1
 Django==6.0.6
 django-cors-headers==4.9.0
+django-stubs==6.0.5
+django-stubs-ext==6.0.5
 djangorestframework==3.17.1
 ffmpeg-python==0.2.0
 future==1.0.0
 sqlparse==0.5.5
+types-PyYAML==6.0.12.20260518
+typing_extensions==4.15.0
