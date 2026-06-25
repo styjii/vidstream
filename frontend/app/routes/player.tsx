@@ -1,15 +1,44 @@
-// VidStream — Player route (responsive + lucide-react)
-
-import type { Route }                  from './+types/player'
+import type { Route } from './+types/player'
 import { useEffect, useState, useRef } from 'react'
-import { Link, useParams }             from 'react-router'
-import { ArrowLeft, Play, Tv2 }        from 'lucide-react'
-import { useVideo, useVideos }         from '../hooks/useVideos'
-import { api }                         from '../services/api'
-import type { Video }                  from '../types'
+import { Link, useLoaderData, useFetcher } from 'react-router'
+import type { ShouldRevalidateFunctionArgs } from 'react-router'
+import { ArrowLeft, Play, Tv2 } from 'lucide-react'
+import { api, dedupeById } from '../services/api'
+import type { Video } from '../types'
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: 'VidStream — Lecteur' }]
+}
+
+export async function loader({ params }: Route.LoaderArgs) {
+  const { id } = params
+  if (!id) throw new Response('Vidéo introuvable.', { status: 404 })
+
+  const [video, all] = await Promise.all([
+    api.getVideo(id).catch(() => null),
+    api.getVideos(),
+  ])
+
+  if (!video) throw new Response('Vidéo introuvable.', { status: 404 })
+
+  const related = dedupeById(all).filter(v => v.id !== id).slice(0, 10)
+  return { video, related }
+}
+
+export async function action({ request, params }: Route.ActionArgs) {
+  const { id } = params
+  if (!id) return { ok: false }
+
+  const formData = await request.formData()
+  const progress_sec = Number(formData.get('progress_sec'))
+  const completed = formData.get('completed') === 'true'
+
+  await api.saveProgress(id, { progress_sec, completed })
+  return { ok: true }
+}
+
+export function shouldRevalidate({ currentParams, nextParams }: ShouldRevalidateFunctionArgs) {
+  return currentParams.id !== nextParams.id
 }
 
 function formatSize(mb: number): string {
@@ -23,9 +52,9 @@ function RelatedCard({ video }: { video: Video }) {
       to={`/player/${video.id}`}
       className="flex gap-2.5 p-2 rounded-lg hover:bg-base-200 transition-colors"
     >
-      <div className="relative w-20 h-12 rounded-md bg-neutral flex-shrink-0 overflow-hidden flex items-center justify-center">
+      <div className="relative w-20 h-12 rounded-md bg-neutral shrink-0 overflow-hidden flex items-center justify-center">
         {video.thumbnail_url
-          ? <img src={api.getThumbnailUrl(video.id)} alt={video.title} className="w-full h-full object-cover" />
+          ? <img src={api.resolveUrl(video.thumbnail_url)!} alt={video.title} className="w-full h-full object-cover" />
           : <Play size={14} className="text-neutral-content/30" />
         }
         <span className="absolute bottom-0.5 right-1 bg-black/75 text-white text-[10px] px-1 rounded">
@@ -43,40 +72,27 @@ function RelatedCard({ video }: { video: Video }) {
 }
 
 export default function Player() {
-  const { id }                    = useParams<{ id: string }>()
-  const { video, loading, error } = useVideo(id)
-  const { videos: all }           = useVideos()
-  const [played,   setPlayed]     = useState(0)
-  const [duration, setDuration]   = useState(0)
-  const lastSavedRef               = useRef(0)
+  const { video, related } = useLoaderData<typeof loader>()
+  const fetcher = useFetcher<typeof action>()
+  const [played, setPlayed] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const lastSavedRef = useRef(0)
 
   useEffect(() => {
-    if (!id) return
     const interval = setInterval(() => {
       const current = Math.floor(played * duration)
       if (current !== lastSavedRef.current && current > 0) {
         lastSavedRef.current = current
-        api.saveProgress(id, { progress_sec: current, completed: played > 0.95 })
+        fetcher.submit(
+          { progress_sec: String(current), completed: String(played > 0.95) },
+          { method: 'post' },
+        )
       }
     }, 10_000)
     return () => clearInterval(interval)
-  }, [id, played, duration])
-
-  if (loading) return (
-    <div className="flex-1 flex items-center justify-center min-h-64">
-      <span className="loading loading-spinner loading-lg text-error" />
-    </div>
-  )
-  if (error || !video) return (
-    <div className="flex-1 flex items-center justify-center min-h-64 p-4">
-      <div className="alert alert-error max-w-sm">Vidéo introuvable.</div>
-    </div>
-  )
-
-  const related = all.filter(v => v.id !== id).slice(0, 10)
+  }, [played, duration])
 
   return (
-    // Stack vertically on mobile, side-by-side on xl+
     <div className="flex flex-col xl:flex-row flex-1 min-h-0">
 
       {/* Player column */}
@@ -89,7 +105,7 @@ export default function Player() {
         <div className="w-full aspect-video bg-black rounded-xl overflow-hidden mb-4">
           <video
             key={video.id}
-            src={api.getStreamUrl(video.id)}
+            src={api.resolveUrl(video.stream_url)!}
             controls
             className="w-full h-full"
             onTimeUpdate={(e) => {
@@ -117,7 +133,7 @@ export default function Player() {
       {/* Related — horizontal scroll on mobile, vertical sidebar on xl+ */}
       <aside className="
         xl:w-64 xl:border-l xl:border-base-300 xl:bg-base-100
-        xl:overflow-auto xl:flex-shrink-0 xl:p-4
+        xl:overflow-auto xl:shrink-0 xl:p-4
         border-t border-base-300 bg-base-100 p-3
       ">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -131,7 +147,7 @@ export default function Player() {
           xl:flex-col xl:gap-1 xl:overflow-x-visible xl:pb-0
         ">
           {related.map(v => (
-            <div key={v.id} className="min-w-[180px] xl:min-w-0">
+            <div key={v.id} className="min-w-45 xl:min-w-0">
               <RelatedCard video={v} />
             </div>
           ))}

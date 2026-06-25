@@ -1,14 +1,16 @@
-// VidStream — History route (responsive + lucide-react)
-
-import type { Route }          from './+types/history'
-import { useState, useEffect } from 'react'
-import { Link }                from 'react-router'
+import type { Route } from './+types/history'
+import { Link, useLoaderData } from 'react-router'
 import { ClipboardList, Play, CheckCircle } from 'lucide-react'
-import { api }                 from '../services/api'
-import type { WatchHistory }   from '../types'
+import { api, dedupeById } from '../services/api'
+import type { WatchHistory } from '../types'
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: 'VidStream — Historique' }]
+}
+
+export async function loader(): Promise<{ history: WatchHistory[] }> {
+  const history = await api.getHistory()
+  return { history: dedupeById(history) }
 }
 
 function formatProgress(sec: number): string {
@@ -19,20 +21,7 @@ function formatProgress(sec: number): string {
 }
 
 export default function History() {
-  const [history,  setHistory] = useState<WatchHistory[]>([])
-  const [loading,  setLoading] = useState(true)
-
-  useEffect(() => {
-    api.getHistory()
-      .then(data => setHistory(data as WatchHistory[]))
-      .finally(() => setLoading(false))
-  }, [])
-
-  if (loading) return (
-    <div className="flex justify-center py-12">
-      <span className="loading loading-spinner loading-md text-error" />
-    </div>
-  )
+  const { history } = useLoaderData<typeof loader>()
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl">
@@ -76,7 +65,7 @@ export default function History() {
                   className="radial-progress text-error shrink-0"
                   style={{
                     '--value': Math.min(Math.round((entry.progress_sec / 5400) * 100), 100),
-                    '--size':  '2rem',
+                    '--size': '2rem',
                     '--thickness': '2px',
                   } as React.CSSProperties}
                 >

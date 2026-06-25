@@ -1,13 +1,11 @@
-// VidStream — Custom hooks
-
 import { useState, useEffect } from 'react'
-import { api }                 from '../services/api'
+import { api } from '../services/api'
 import type { Video, Category } from '../types'
 
 export function useVideos(params: Record<string, string> = {}) {
-  const [videos,  setVideos]  = useState<Video[]>([])
+  const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const key = JSON.stringify(params)
 
@@ -25,7 +23,7 @@ export function useVideos(params: Record<string, string> = {}) {
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([])
-  const [loading,    setLoading]    = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.getCategories()
@@ -37,9 +35,9 @@ export function useCategories() {
 }
 
 export function useVideo(id: string | undefined) {
-  const [video,   setVideo]   = useState<Video | null>(null)
+  const [video, setVideo] = useState<Video | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return

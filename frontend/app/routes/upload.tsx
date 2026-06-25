@@ -1,13 +1,17 @@
-// VidStream — Upload route (responsive + lucide-react)
-
-import type { Route }         from './+types/upload'
-import { useState, useRef }   from 'react'
+import type { Route } from './+types/upload'
+import { useState, useRef } from 'react'
+import { useLoaderData } from 'react-router'
 import { Upload as UploadIcon, FileVideo, CheckCircle, XCircle, Server } from 'lucide-react'
-import { api }                from '../services/api'
-import { useCategories }      from '../hooks/useVideos'
+import { api, dedupeById } from '../services/api'
+import type { Category } from '../types'
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: 'VidStream — Envoyer une vidéo' }]
+}
+
+export async function loader(): Promise<{ categories: Category[] }> {
+  const categories = await api.getCategories()
+  return { categories: dedupeById(categories) }
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'done' | 'error'
@@ -19,13 +23,13 @@ function formatSize(bytes: number): string {
 }
 
 export default function Upload() {
-  const { categories }              = useCategories()
-  const [file,       setFile]       = useState<File | null>(null)
-  const [title,      setTitle]      = useState('')
+  const { categories } = useLoaderData<typeof loader>()
+  const [file, setFile] = useState<File | null>(null)
+  const [title, setTitle] = useState('')
   const [categoryId, setCategoryId] = useState('')
-  const [progress,   setProgress]   = useState(0)
-  const [status,     setStatus]     = useState<UploadStatus>('idle')
-  const [message,    setMessage]    = useState('')
+  const [progress, setProgress] = useState(0)
+  const [status, setStatus] = useState<UploadStatus>('idle')
+  const [message, setMessage] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   function handleDrop(e: React.DragEvent) {
@@ -42,7 +46,7 @@ export default function Upload() {
   function handleSubmit() {
     if (!file) return
     const formData = new FormData()
-    formData.append('file',  file)
+    formData.append('file', file)
     formData.append('title', title || file.name.replace(/\.[^.]+$/, ''))
     if (categoryId) formData.append('category_id', categoryId)
 

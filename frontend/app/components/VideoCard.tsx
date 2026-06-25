@@ -1,8 +1,6 @@
-// VidStream — VideoCard (responsive + lucide-react)
-
-import { Link }    from 'react-router'
-import { Play }    from 'lucide-react'
-import { api }     from '../services/api'
+import { Link } from 'react-router'
+import { Play } from 'lucide-react'
+import { api } from '../services/api'
 import type { Video } from '../types'
 
 function formatSize(mb: number): string {
@@ -17,7 +15,7 @@ export default function VideoCard({ video }: { video: Video }) {
       <div className="relative aspect-video rounded-xl bg-neutral overflow-hidden mb-2">
         {video.thumbnail_url ? (
           <img
-            src={api.getThumbnailUrl(video.id)}
+            src={api.resolveUrl(video.thumbnail_url)!}
             alt={video.title}
             className="w-full h-full object-cover group-hover:opacity-80 transition-opacity duration-200"
           />

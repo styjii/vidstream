@@ -1,27 +1,41 @@
-// VidStream — Settings route (responsive + lucide-react)
-
-import type { Route }          from './+types/settings'
-import { useState, useEffect } from 'react'
+import type { Route } from './+types/settings'
+import { useLoaderData, useFetcher } from 'react-router'
 import {
-  Folder, RefreshCw, Wifi, Monitor,
+  Folder, RefreshCw, Wifi,
   Laptop, Smartphone, CheckCircle, XCircle,
 } from 'lucide-react'
-import { api }           from '../services/api'
-import { useCategories } from '../hooks/useVideos'
-import type { Device }   from '../types'
+import { api, dedupeById } from '../services/api'
+import type { Category, Device, ScanResult } from '../types'
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: 'VidStream — Paramètres' }]
 }
 
+export async function loader(): Promise<{ categories: Category[]; devices: Device[] }> {
+  const [categories, devices] = await Promise.all([
+    api.getCategories(),
+    api.getDevices(),
+  ])
+  return { categories: dedupeById(categories), devices: dedupeById(devices) }
+}
+
+export async function action(): Promise<{ result?: ScanResult; error?: string }> {
+  try {
+    const result = await api.triggerScan()
+    return { result }
+  } catch {
+    return { error: 'Erreur lors du scan.' }
+  }
+}
+
 function timeAgo(dateStr: string): string {
-  const diff  = Date.now() - new Date(dateStr).getTime()
-  const mins  = Math.floor(diff / 60_000)
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60_000)
   const hours = Math.floor(mins / 60)
-  const days  = Math.floor(hours / 24)
-  if (days  > 0) return `il y a ${days}j`
+  const days = Math.floor(hours / 24)
+  if (days > 0) return `il y a ${days}j`
   if (hours > 0) return `il y a ${hours}h`
-  if (mins  > 0) return `il y a ${mins} min`
+  if (mins > 0) return `il y a ${mins} min`
   return "à l'instant"
 }
 
@@ -37,28 +51,16 @@ function DeviceIcon({ name }: { name: string }) {
 }
 
 export default function Settings() {
-  const { categories, loading: catLoading } = useCategories()
-  const [devices,   setDevices]   = useState<Device[]>([])
-  const [scanning,  setScanning]  = useState(false)
-  const [scanMsg,   setScanMsg]   = useState<string | null>(null)
-  const [scanError, setScanError] = useState<string | null>(null)
+  const { categories, devices } = useLoaderData<typeof loader>()
+  const fetcher = useFetcher<typeof action>()
 
-  useEffect(() => {
-    api.getDevices().then(setDevices).catch(console.error)
-  }, [])
-
-  async function handleScan() {
-    setScanning(true); setScanMsg(null); setScanError(null)
-    try {
-      const result = await api.triggerScan()
-      setScanMsg(`Scan terminé — ${result.total_added} vidéo(s) ajoutée(s).`)
-      setDevices(await api.getDevices())
-    } catch {
-      setScanError('Erreur lors du scan.')
-    } finally {
-      setScanning(false)
-    }
+  function handleScan() {
+    fetcher.submit({}, { method: 'post' })
   }
+
+  const scanning = fetcher.state !== 'idle'
+  const scanMsg = fetcher.data?.result?.message ?? null
+  const scanError = fetcher.data?.error ?? null
 
   const totalVideos = categories.reduce((acc, c) => acc + c.video_count, 0)
   const onlineCount = devices.filter(d => isOnline(d.last_seen)).length
@@ -101,7 +103,7 @@ export default function Settings() {
             </button>
           </div>
 
-          {scanMsg   && (
+          {scanMsg && (
             <div className="alert alert-success text-xs py-2 gap-2">
               <CheckCircle size={14} /> {scanMsg}
             </div>
@@ -112,11 +114,7 @@ export default function Settings() {
             </div>
           )}
 
-          {catLoading ? (
-            <div className="flex justify-center py-4">
-              <span className="loading loading-spinner loading-sm" />
-            </div>
-          ) : categories.map(cat => (
+          {categories.map(cat => (
             <div key={cat.id} className="flex items-start sm:items-center gap-3 py-2 border-b border-base-200 last:border-0">
               <Folder size={18} className="text-base-content/40 mt-0.5 sm:mt-0 shrink-0" />
               <div className="flex-1 min-w-0">
@@ -147,9 +145,8 @@ export default function Settings() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${
-                    isOnline(device.last_seen) ? 'bg-success' : 'bg-base-300'
-                  }`} />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline(device.last_seen) ? 'bg-success' : 'bg-base-300'
+                    }`} />
                   <span className="truncate">{device.name}</span>
                 </div>
                 <p className="text-xs text-base-content/50 mt-0.5">

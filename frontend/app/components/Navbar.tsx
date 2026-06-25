@@ -1,23 +1,25 @@
-// VidStream — Navbar (responsive + lucide-react)
-
-import { useState }          from 'react'
-import { Link, NavLink, useNavigate } from 'react-router'
+import { useState } from 'react'
+import { Link, NavLink, useNavigate, useFetcher, useRouteLoaderData } from 'react-router'
 import {
   Play, Search, Upload, RefreshCw, Settings,
   Wifi, Menu, X, Home, Clock, ClipboardList,
   FolderOpen, Monitor,
 } from 'lucide-react'
-import { api }               from '../services/api'
-import { useCategories }     from '../hooks/useVideos'
+import type { loader as layoutLoader } from '../routes/_layout'
+import type { ScanResult } from '../types'
 
 export default function Navbar() {
-  const [query,      setQuery]      = useState('')
-  const [scanning,   setScanning]   = useState(false)
+  const [query, setQuery] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const navigate    = useNavigate()
-  const { categories } = useCategories()
+  const navigate = useNavigate()
 
-  function handleSearch(e: React.FormEvent) {
+  const data = useRouteLoaderData<typeof layoutLoader>('routes/_layout')
+  const categories = data?.categories ?? []
+
+  const scanFetcher = useFetcher<{ result?: ScanResult; error?: string }>()
+  const scanning = scanFetcher.state !== 'idle'
+
+  function handleSearch(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     if (query.trim()) {
       navigate(`/?search=${encodeURIComponent(query.trim())}`)
@@ -25,29 +27,20 @@ export default function Navbar() {
     }
   }
 
-  async function handleScan() {
-    setScanning(true)
-    try {
-      const result = await api.triggerScan()
-      alert(`Scan terminé — ${result.total_added} vidéo(s) ajoutée(s).`)
-    } catch {
-      alert('Erreur lors du scan.')
-    } finally {
-      setScanning(false)
-    }
+  function handleScan() {
+    scanFetcher.submit({}, { method: 'post', action: '/settings' })
   }
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-4 py-3 text-sm rounded-lg transition-colors ${
-      isActive
-        ? 'bg-base-200 font-medium text-base-content'
-        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
+    `flex items-center gap-3 px-4 py-3 text-sm rounded-lg transition-colors ${isActive
+      ? 'bg-base-200 font-medium text-base-content'
+      : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
     }`
 
   return (
     <>
       {/* ── Navbar bar ── */}
-      <nav className="navbar bg-base-100 border-b border-base-300 sticky top-0 z-50 px-3 sm:px-4 min-h-[52px]">
+      <nav className="navbar bg-base-100 border-b border-base-300 sticky top-0 z-50 px-3 sm:px-4 min-h-13">
 
         {/* Left — hamburger + logo */}
         <div className="navbar-start gap-2">
@@ -88,7 +81,7 @@ export default function Navbar() {
           <div className="badge badge-success gap-1 font-medium text-xs hidden sm:flex">
             <Wifi size={10} /> LAN
           </div>
-          <Link to="/upload"   className="btn btn-ghost btn-sm btn-square" title="Envoyer une vidéo">
+          <Link to="/upload" className="btn btn-ghost btn-sm btn-square" title="Envoyer une vidéo">
             <Upload size={17} />
           </Link>
           <button
@@ -111,7 +104,7 @@ export default function Navbar() {
       {/* ── Mobile drawer overlay ── */}
       {drawerOpen && (
         <div
-          className="fixed inset-0 z-[60] lg:hidden"
+          className="fixed inset-0 z-60 lg:hidden"
           onClick={() => setDrawerOpen(false)}
         >
           {/* Backdrop */}
@@ -161,16 +154,16 @@ export default function Navbar() {
 
             {/* Nav links */}
             <nav className="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-0.5">
-              <NavLink to="/"        end className={linkClass} onClick={() => setDrawerOpen(false)}>
+              <NavLink to="/" end className={linkClass} onClick={() => setDrawerOpen(false)}>
                 <Home size={17} /> Accueil
               </NavLink>
-              <NavLink to="/?recent"     className={linkClass} onClick={() => setDrawerOpen(false)}>
+              <NavLink to="/?recent" className={linkClass} onClick={() => setDrawerOpen(false)}>
                 <Clock size={17} /> Récents
               </NavLink>
-              <NavLink to="/history"     className={linkClass} onClick={() => setDrawerOpen(false)}>
+              <NavLink to="/history" className={linkClass} onClick={() => setDrawerOpen(false)}>
                 <ClipboardList size={17} /> Historique
               </NavLink>
-              <NavLink to="/upload"      className={linkClass} onClick={() => setDrawerOpen(false)}>
+              <NavLink to="/upload" className={linkClass} onClick={() => setDrawerOpen(false)}>
                 <Upload size={17} /> Uploads reçus
               </NavLink>
 
