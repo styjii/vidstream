@@ -120,7 +120,7 @@ export default function Navbar() {
         </div>
 
         {/* Center — search bar */}
-        <div className="navbar-center flex-1 max-w-md px-2 sm:px-4 hidden sm:flex">
+        <div className="navbar-center max-w-md px-2 sm:px-4 hidden lg:flex">
           <form onSubmit={handleSearch} className="w-full">
             <label className="input input-sm input-bordered flex items-center gap-2 w-full rounded-full">
               <Search size={13} className="text-base-content/40 shrink-0" />
