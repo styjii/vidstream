@@ -62,8 +62,16 @@ def get_or_create_device(request) -> Device:
 
 @api_view(["GET"])
 def category_list(request):
-    """Return all categories with their video count."""
-    categories = Category.objects.all()
+    """
+    Return root categories (no parent) with their video count and nested
+    sub-categories (one level shown, themselves carrying their own counts).
+    Use ?flat=true to get every category (root + sub) as a flat list instead.
+    """
+    if request.query_params.get("flat"):
+        categories = Category.objects.all()
+    else:
+        categories = Category.objects.filter(parent__isnull=True)
+
     serializer = CategorySerializer(categories, many=True, context={"request": request})
     return Response(serializer.data)
 
@@ -77,18 +85,25 @@ def category_list(request):
 def video_list(request):
     """
     Return all videos. Optional filters:
-      ?category=<uuid>
+      ?category=<uuid>       → videos directly in this category
+      ?category=<uuid>&include_children=true → also include videos from
+                                                  every nested sub-category
       ?search=<query>
       ?recent=true   → last 20 added
     """
     videos = Video.objects.select_related("category").all()
 
     category_id = request.query_params.get("category")
+    include_children = request.query_params.get("include_children")
     search = request.query_params.get("search")
     recent = request.query_params.get("recent")
 
     if category_id:
-        videos = videos.filter(category__id=category_id)
+        if include_children:
+            category_ids = _collect_category_and_descendant_ids(category_id)
+            videos = videos.filter(category__id__in=category_ids)
+        else:
+            videos = videos.filter(category__id=category_id)
 
     if search:
         videos = videos.filter(title__icontains=search)
@@ -98,6 +113,21 @@ def video_list(request):
 
     serializer = VideoSerializer(videos, many=True, context={"request": request})
     return Response(serializer.data)
+
+
+def _collect_category_and_descendant_ids(category_id) -> list:
+    """Return [category_id, *all descendant ids] via a simple BFS over `children`."""
+    ids = [category_id]
+    frontier = [category_id]
+
+    while frontier:
+        children_ids = list(
+            Category.objects.filter(parent__id__in=frontier).values_list("id", flat=True)
+        )
+        ids.extend(children_ids)
+        frontier = children_ids
+
+    return ids
 
 
 @api_view(["GET"])

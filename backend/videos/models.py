@@ -11,18 +11,43 @@ class Category(models.Model):
     """Scanned folder (Movies, Series, Music...)"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     folder_path = models.TextField(unique=True)
     icon = models.CharField(max_length=50, default="folder")
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="children",
+        help_text="Catégorie parente si ceci est une sous-catégorie générée depuis un sous-dossier.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = "Catégorie"
         verbose_name_plural = "Catégories"
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name", "parent"], name="unique_category_name_per_parent"
+            )
+        ]
 
     def __str__(self):
+        if self.parent is not None:
+            return f"{self.parent.name} / {self.name}"
         return self.name
+
+    @property
+    def full_path(self):
+        """Human-readable breadcrumb of the category chain, e.g. 'Films / Action'."""
+        parts = [self.name]
+        node = self.parent
+        while node is not None:
+            parts.insert(0, node.name)
+            node = node.parent
+        return " / ".join(parts)
 
 
 class Video(models.Model):

@@ -7,15 +7,52 @@ from .models import Category, Video, Device, WatchHistory, Upload
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    """
+    Sérialise une catégorie avec TOUTE sa descendance, peu importe la
+    profondeur de l'arborescence (pas de limite à 2 niveaux).
+
+    - `video_count`      : nombre de vidéos directement dans cette catégorie
+    - `total_video_count`: nombre de vidéos dans cette catégorie + toutes
+                            ses sous-catégories (récursif)
+    - `children`         : liste des sous-catégories directes, chacune
+                            sérialisée avec ce même serializer → récursion
+                            naturelle jusqu'aux feuilles de l'arbre.
+    """
+
     video_count = serializers.IntegerField(source="videos.count", read_only=True)
+    total_video_count = serializers.SerializerMethodField()
+    full_path = serializers.CharField(read_only=True)
+    children = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = ["id", "name", "icon", "folder_path", "video_count", "created_at"]
+        fields = [
+            "id",
+            "name",
+            "icon",
+            "folder_path",
+            "parent",
+            "full_path",
+            "video_count",
+            "total_video_count",
+            "children",
+            "created_at",
+        ]
+
+    def get_children(self, obj):
+        children = obj.children.all().order_by("name")
+        return CategorySerializer(children, many=True, context=self.context).data
+
+    def get_total_video_count(self, obj):
+        count = obj.videos.count()
+        for child in obj.children.all():
+            count += self.get_total_video_count(child)
+        return count
 
 
 class VideoSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source="category.name", read_only=True)
+    category_name = serializers.SerializerMethodField()
+    category_path = serializers.SerializerMethodField()
     duration_display = serializers.CharField(read_only=True)
     thumbnail_url = serializers.SerializerMethodField()
     stream_url = serializers.SerializerMethodField()
@@ -27,6 +64,7 @@ class VideoSerializer(serializers.ModelSerializer):
             "title",
             "category",
             "category_name",
+            "category_path",
             "duration_sec",
             "duration_display",
             "file_size_mb",
@@ -37,6 +75,12 @@ class VideoSerializer(serializers.ModelSerializer):
             "thumbnail_url",
             "stream_url",
         ]
+
+    def get_category_name(self, obj):
+        return obj.category.name if obj.category else None
+
+    def get_category_path(self, obj):
+        return obj.category.full_path if obj.category else None
 
     def get_thumbnail_url(self, obj):
         request = self.context.get("request")

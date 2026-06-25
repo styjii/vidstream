@@ -19,7 +19,21 @@ logger = logging.getLogger(__name__)
 VIDEO_EXTENSIONS = getattr(
     settings,
     "VIDEO_EXTENSIONS",
-    [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v"],
+    [
+        ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v",
+        ".ts", ".m2ts", ".mts",          # flux transport (TV, caméscopes)
+        ".mpg", ".mpeg", ".m1v", ".m2v", # MPEG anciens formats
+        ".3gp", ".3g2",                  # mobile
+        ".ogv",                          # Ogg vidéo
+        ".vob",                          # DVD
+        ".divx", ".xvid",                # codecs historiques en extension
+        ".asf", ".rm", ".rmvb",          # formats anciens streaming
+        ".f4v", ".swf",                  # Flash vidéo
+        ".mxf",                          # broadcast/pro
+        ".dv",                           # caméscope DV
+        ".qt",                           # QuickTime
+        ".vp9", ".av1",                  # rare en tant qu'extension de conteneur, mais on les couvre
+    ],
 )
 
 
@@ -131,8 +145,63 @@ def get_file_size_mb(file_path: str) -> int:
 
 
 # ------------------------------------------------------------------ #
-#  Core scanner                                                       #
+#  Sous-catégories par sous-dossier                                   #
 # ------------------------------------------------------------------ #
+
+# Cache mémoire pour éviter de refaire un get_or_create par fichier
+# au sein d'un même appel à scan_folder.
+_subcategory_cache: dict[tuple, Category] = {}
+
+
+def get_or_create_subcategory(root_category: Category, relative_dir: Path) -> Category:
+    """
+    Return the Category that should own a file located at `relative_dir`
+    (relative to root_category.folder_path).
+
+    Creates one Category per path segment, chained via `parent`, mirroring
+    the folder structure on disk:
+
+        Films/                     -> root_category (existant)
+        Films/Action/              -> sous-catégorie "Action" (parent=Films)
+        Films/Action/2020s/        -> sous-catégorie "2020s" (parent=Action)
+
+    A file directly inside the root folder uses root_category itself.
+    """
+    parts = [p for p in relative_dir.parts if p not in (".", "")]
+
+    if not parts:
+        return root_category
+
+    current = root_category
+    accumulated_path = Path(root_category.folder_path)
+
+    for part in parts:
+        accumulated_path = accumulated_path / part
+        cache_key = (root_category.id, str(accumulated_path))
+
+        cached = _subcategory_cache.get(cache_key)
+        if cached is not None:
+            current = cached
+            continue
+
+        category, created = Category.objects.get_or_create(
+            name=part,
+            parent=current,
+            defaults={
+                "folder_path": str(accumulated_path),
+                "icon": current.icon,
+            },
+        )
+        if created:
+            logger.info(f"Sous-catégorie créée : {category.full_path}")
+
+        _subcategory_cache[cache_key] = category
+        current = category
+
+    return current
+
+
+
 
 
 def scan_folder(category: Category) -> dict:
@@ -151,7 +220,14 @@ def scan_folder(category: Category) -> dict:
     # Collect all existing file paths to avoid duplicates
     existing_paths = set(Video.objects.values_list("file_path", flat=True))
 
+    # Vide le cache de sous-catégories à chaque nouveau scan de dossier racine,
+    # pour repartir d'un état propre (les catégories existantes restent en base).
+    _subcategory_cache.clear()
+
     for root, _, files in os.walk(folder):
+        relative_dir = Path(root).relative_to(folder)
+        target_category = get_or_create_subcategory(category, relative_dir)
+
         for filename in files:
             ext = Path(filename).suffix.lower()
             if ext not in VIDEO_EXTENSIONS:
@@ -170,7 +246,7 @@ def scan_folder(category: Category) -> dict:
                 size_mb = get_file_size_mb(file_path)
 
                 video = Video.objects.create(
-                    category=category,
+                    category=target_category,
                     title=title,
                     file_path=file_path,
                     duration_sec=meta.get("duration_sec", 0),
@@ -186,7 +262,7 @@ def scan_folder(category: Category) -> dict:
                     video.save(update_fields=["thumbnail_path"])
 
                 summary["added"] += 1
-                logger.info(f"Indexed: {title}")
+                logger.info(f"Indexed: {title} → {target_category.full_path}")
 
             except Exception as e:
                 summary["errors"] += 1
@@ -217,7 +293,7 @@ def scan_all_folders() -> dict:
             continue
 
         category, created = Category.objects.get_or_create(
-            name=name, defaults={"folder_path": path, "icon": icon}
+            name=name, parent=None, defaults={"folder_path": path, "icon": icon}
         )
 
         if not created and category.folder_path != path:
