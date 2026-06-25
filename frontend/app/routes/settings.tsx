@@ -2,7 +2,7 @@ import type { Route } from './+types/settings'
 import { useLoaderData, useFetcher } from 'react-router'
 import {
   Folder, RefreshCw, Wifi,
-  Laptop, Smartphone, CheckCircle, XCircle,
+  Laptop, Smartphone, CheckCircle, XCircle, ChevronRight,
 } from 'lucide-react'
 import { api, dedupeById } from '../services/api'
 import type { Category, Device, ScanResult } from '../types'
@@ -50,6 +50,52 @@ function DeviceIcon({ name }: { name: string }) {
   return <Laptop size={16} />
 }
 
+/** Ligne de dossier récursive */
+function CategoryFolderTree({ cat, depth = 0 }: { cat: Category; depth?: number }) {
+  const hasChildren = cat.children.length > 0
+
+  return (
+    <>
+      <div
+        className="flex items-start sm:items-center gap-3 py-2 border-b border-base-200 last:border-0"
+        style={{ paddingLeft: `${depth * 20}px` }}
+      >
+        {hasChildren ? (
+          <ChevronRight size={14} className="text-base-content/30 mt-0.5 sm:mt-0 shrink-0" />
+        ) : (
+          <Folder
+            size={depth === 0 ? 18 : 15}
+            className="text-base-content/40 mt-0.5 sm:mt-0 shrink-0"
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <code className="text-xs text-base-content break-all">{cat.folder_path}</code>
+            <span className="badge badge-info badge-xs shrink-0">{cat.name}</span>
+          </div>
+          <p className="text-xs text-base-content/50 mt-0.5">
+            {cat.video_count} fichier(s) direct(s)
+            {hasChildren && ` · ${cat.total_video_count} au total`}
+          </p>
+        </div>
+      </div>
+      {hasChildren && cat.children.map(child => (
+        <CategoryFolderTree key={child.id} cat={child} depth={depth + 1} />
+      ))}
+    </>
+  )
+}
+
+/** Compte récursivement tous les dossiers */
+function countAllFolders(cats: Category[]): number {
+  return cats.reduce((acc, cat) => acc + 1 + countAllFolders(cat.children), 0)
+}
+
+/** Compte récursivement toutes les vidéos */
+function countAllVideos(cats: Category[]): number {
+  return cats.reduce((acc, cat) => acc + cat.video_count, 0)
+}
+
 export default function Settings() {
   const { categories, devices } = useLoaderData<typeof loader>()
   const fetcher = useFetcher<typeof action>()
@@ -62,7 +108,8 @@ export default function Settings() {
   const scanMsg = fetcher.data?.result?.message ?? null
   const scanError = fetcher.data?.error ?? null
 
-  const totalVideos = categories.reduce((acc, c) => acc + c.video_count, 0)
+  const totalFolders = countAllFolders(categories)
+  const totalVideos = countAllVideos(categories)
   const onlineCount = devices.filter(d => isOnline(d.last_seen)).length
 
   return (
@@ -75,8 +122,8 @@ export default function Settings() {
           <div className="stat-desc text-xs">Vidéos indexées</div>
         </div>
         <div className="stat px-4 sm:px-6 py-3 sm:py-4">
-          <div className="stat-value text-xl sm:text-2xl">{categories.length}</div>
-          <div className="stat-desc text-xs">Catégories</div>
+          <div className="stat-value text-xl sm:text-2xl">{totalFolders}</div>
+          <div className="stat-desc text-xs">Dossiers</div>
         </div>
         <div className="stat px-4 sm:px-6 py-3 sm:py-4">
           <div className="stat-value text-xl sm:text-2xl">{onlineCount}</div>
@@ -115,16 +162,7 @@ export default function Settings() {
           )}
 
           {categories.map(cat => (
-            <div key={cat.id} className="flex items-start sm:items-center gap-3 py-2 border-b border-base-200 last:border-0">
-              <Folder size={18} className="text-base-content/40 mt-0.5 sm:mt-0 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <code className="text-xs text-base-content break-all">{cat.folder_path}</code>
-                  <span className="badge badge-info badge-xs shrink-0">{cat.name}</span>
-                </div>
-                <p className="text-xs text-base-content/50 mt-0.5">{cat.video_count} fichier(s)</p>
-              </div>
-            </div>
+            <CategoryFolderTree key={cat.id} cat={cat} depth={0} />
           ))}
         </div>
       </div>
@@ -145,8 +183,7 @@ export default function Settings() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline(device.last_seen) ? 'bg-success' : 'bg-base-300'
-                    }`} />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline(device.last_seen) ? 'bg-success' : 'bg-base-300'}`} />
                   <span className="truncate">{device.name}</span>
                 </div>
                 <p className="text-xs text-base-content/50 mt-0.5">

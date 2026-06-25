@@ -71,7 +71,7 @@ export default function Upload() {
   }
 
   return (
-    <div className="p-4 sm:p-6 min-h-full flex items-start justify-center">
+    <div className="p-3 sm:p-5 xl:p-6 min-h-full flex items-start justify-center">
       <div className="w-full max-w-lg">
         <div className="card bg-base-100 border border-base-300 shadow-sm">
           <div className="card-body gap-4 p-4 sm:p-6">
@@ -88,7 +88,7 @@ export default function Upload() {
 
             {/* Drop zone */}
             <div
-              className={`border-2 border-dashed rounded-xl p-8 sm:p-10 text-center cursor-pointer transition-colors
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors
                 ${file
                   ? 'border-error bg-error/5'
                   : 'border-base-300 hover:border-error hover:bg-base-200'
@@ -107,7 +107,7 @@ export default function Upload() {
               {file ? (
                 <div className="flex flex-col items-center gap-2">
                   <FileVideo size={36} className="text-error" />
-                  <p className="text-sm font-medium break-all">{file.name}</p>
+                  <p className="text-sm font-medium break-all px-2">{file.name}</p>
                   <p className="text-xs text-base-content/50">{formatSize(file.size)}</p>
                 </div>
               ) : (
@@ -117,7 +117,7 @@ export default function Upload() {
                     Glisser-déposer une vidéo ici
                   </p>
                   <p className="text-xs text-base-content/40">
-                    ou cliquer pour parcourir · mp4, mkv, avi, mov
+                    ou toucher pour parcourir · mp4, mkv, avi, mov
                   </p>
                 </div>
               )}
@@ -143,9 +143,9 @@ export default function Upload() {
               </div>
             )}
 
-            {/* Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
+            {/* Fields — always stacked (2-col on sm+ only if space permits) */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
                 <label className="label py-1">
                   <span className="label-text text-xs font-medium">Catégorie de destination</span>
                 </label>
@@ -160,7 +160,7 @@ export default function Upload() {
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="flex-1">
                 <label className="label py-1">
                   <span className="label-text text-xs font-medium">Titre (optionnel)</span>
                 </label>

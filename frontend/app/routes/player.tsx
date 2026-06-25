@@ -52,7 +52,8 @@ function RelatedCard({ video }: { video: Video }) {
       to={`/player/${video.id}`}
       className="flex gap-2.5 p-2 rounded-lg hover:bg-base-200 transition-colors"
     >
-      <div className="relative w-20 h-12 rounded-md bg-neutral shrink-0 overflow-hidden flex items-center justify-center">
+      {/* Thumbnail — fixed size on all breakpoints */}
+      <div className="relative w-24 h-14 rounded-md bg-neutral shrink-0 overflow-hidden flex items-center justify-center">
         {video.thumbnail_url
           ? <img src={api.resolveUrl(video.thumbnail_url)!} alt={video.title} className="w-full h-full object-cover" />
           : <Play size={14} className="text-neutral-content/30" />
@@ -62,8 +63,8 @@ function RelatedCard({ video }: { video: Video }) {
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium truncate">{video.title}</p>
-        <p className="text-[11px] text-base-content/50 mt-0.5">
+        <p className="text-xs font-medium line-clamp-2 leading-snug">{video.title}</p>
+        <p className="text-[11px] text-base-content/50 mt-1">
           {video.duration_display} · {formatSize(video.file_size_mb)}
         </p>
       </div>
@@ -93,10 +94,11 @@ export default function Player() {
   }, [played, duration])
 
   return (
-    <div className="flex flex-col xl:flex-row flex-1 min-h-0">
+    // Stack vertically on mobile/tablet, side-by-side on xl+
+    <div className="flex flex-col xl:flex-row h-full">
 
-      {/* Player column */}
-      <div className="flex-1 p-3 sm:p-5 overflow-auto">
+      {/* ── Main player column ── */}
+      <div className="flex-1 min-w-0 p-3 sm:p-5 xl:overflow-y-auto">
         <Link to="/" className="btn btn-ghost btn-xs mb-3 gap-1.5 -ml-1">
           <ArrowLeft size={14} /> Retour
         </Link>
@@ -117,23 +119,23 @@ export default function Player() {
         </div>
 
         {/* Metadata */}
-        <h1 className="text-base sm:text-lg font-semibold mb-2">{video.title}</h1>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
+        <h1 className="text-base sm:text-lg font-semibold mb-2 leading-snug">{video.title}</h1>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/50">
           <span className="badge badge-ghost badge-sm">{video.category_name}</span>
           <span>{formatSize(video.file_size_mb)}</span>
           <span>·</span>
           <span>{video.format?.toUpperCase()} · {video.resolution}</span>
-          <span className="hidden sm:inline">·</span>
-          <span className="hidden sm:inline">
+          <span>·</span>
+          <span>
             Ajouté le {new Date(video.scanned_at).toLocaleDateString('fr-FR')}
           </span>
         </div>
       </div>
 
-      {/* Related — horizontal scroll on mobile, vertical sidebar on xl+ */}
+      {/* ── Related panel ── */}
       <aside className="
-        xl:w-64 xl:border-l xl:border-base-300 xl:bg-base-100
-        xl:overflow-auto xl:shrink-0 xl:p-4
+        xl:w-72 xl:border-l xl:border-t-0 xl:shrink-0
+        xl:border-base-300 xl:bg-base-100 xl:overflow-y-auto xl:p-4
         border-t border-base-300 bg-base-100 p-3
       ">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -141,17 +143,26 @@ export default function Player() {
           À regarder ensuite
         </h2>
 
-        {/* Horizontal scroll on mobile, vertical list on xl */}
-        <div className="
-          flex gap-2 overflow-x-auto pb-2
-          xl:flex-col xl:gap-1 xl:overflow-x-visible xl:pb-0
-        ">
-          {related.map(v => (
-            <div key={v.id} className="min-w-45 xl:min-w-0">
-              <RelatedCard video={v} />
+        {related.length === 0 ? (
+          <p className="text-xs text-base-content/40 px-2">Aucune autre vidéo disponible.</p>
+        ) : (
+          <>
+            {/* Horizontal scroll on mobile/tablet */}
+            <div className="flex gap-2 overflow-x-auto pb-2 xl:hidden">
+              {related.map(v => (
+                <div key={v.id} className="w-52 shrink-0">
+                  <RelatedCard video={v} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+            {/* Vertical list on xl+ */}
+            <div className="hidden xl:flex flex-col gap-1">
+              {related.map(v => (
+                <RelatedCard key={v.id} video={v} />
+              ))}
+            </div>
+          </>
+        )}
       </aside>
     </div>
   )

@@ -3,7 +3,11 @@ export interface Category {
   name: string
   icon: string
   folder_path: string
+  parent: string | null
+  full_path: string
   video_count: number
+  total_video_count: number
+  children: Category[]
   created_at: string
 }
 

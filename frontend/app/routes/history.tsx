@@ -17,14 +17,39 @@ function formatProgress(sec: number): string {
   const h = Math.floor(sec / 3600)
   const m = Math.floor((sec % 3600) / 60)
   if (h > 0) return `${h}h ${m}min regardées`
-  return `${m} min regardées`
+  if (m > 0) return `${m} min regardées`
+  return 'Début'
+}
+
+function ProgressIndicator({ sec, completed }: { sec: number; completed: boolean }) {
+  if (completed) {
+    return (
+      <span className="badge badge-success badge-sm gap-1 shrink-0 whitespace-nowrap">
+        <CheckCircle size={11} /> Terminé
+      </span>
+    )
+  }
+
+  // Use a simple linear progress bar instead of radial-progress to avoid overflow issues
+  const percent = Math.min(Math.round((sec / 5400) * 100), 100)
+  return (
+    <div className="flex flex-col items-end gap-1 shrink-0 w-14">
+      <span className="text-xs font-medium tabular-nums text-base-content/60">{percent}%</span>
+      <div className="w-full h-1 rounded-full bg-base-300 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-error transition-all"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  )
 }
 
 export default function History() {
   const { history } = useLoaderData<typeof loader>()
 
   return (
-    <div className="p-4 sm:p-6 max-w-2xl">
+    <div className="p-3 sm:p-5 xl:p-6 max-w-2xl">
       <h1 className="text-base sm:text-lg font-semibold mb-4 sm:mb-5 flex items-center gap-2">
         <ClipboardList size={18} /> Historique de lecture
       </h1>
@@ -40,40 +65,23 @@ export default function History() {
             <Link
               key={entry.id}
               to={`/player/${entry.video}`}
-              className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-base-100 border border-base-300 hover:bg-base-200 transition-colors"
+              className="flex items-center gap-3 p-3 sm:p-4 rounded-xl bg-base-100 border border-base-300 hover:bg-base-200 transition-colors min-w-0"
             >
-              {/* Play icon */}
+              {/* Icon */}
               <div className="w-9 h-9 rounded-full bg-base-200 flex items-center justify-center shrink-0">
                 <Play size={15} className="text-base-content/50" />
               </div>
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{entry.video_title}</p>
-                <p className="text-xs text-base-content/50 mt-0.5">
+                <p className="text-sm font-medium line-clamp-1">{entry.video_title}</p>
+                <p className="text-xs text-base-content/50 mt-0.5 truncate">
                   {entry.device_name} · {formatProgress(entry.progress_sec)}
                 </p>
               </div>
 
-              {/* Status */}
-              {entry.completed ? (
-                <span className="badge badge-success badge-sm gap-1 shrink-0">
-                  <CheckCircle size={11} /> Terminé
-                </span>
-              ) : (
-                <div
-                  className="radial-progress text-error shrink-0"
-                  style={{
-                    '--value': Math.min(Math.round((entry.progress_sec / 5400) * 100), 100),
-                    '--size': '2rem',
-                    '--thickness': '2px',
-                  } as React.CSSProperties}
-                >
-                  <span className="text-[9px]">
-                    {Math.min(Math.round((entry.progress_sec / 5400) * 100), 100)}%
-                  </span>
-                </div>
-              )}
+              {/* Progress status */}
+              <ProgressIndicator sec={entry.progress_sec} completed={entry.completed} />
             </Link>
           ))}
         </div>

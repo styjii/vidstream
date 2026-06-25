@@ -11,11 +11,11 @@ export async function loader(): Promise<{ categories: Category[] }> {
 
 export default function AppLayout() {
   return (
-    <div className="h-screen overflow-hidden flex flex-col">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Navbar />
-      <div className="flex flex-1 min-h-0">
+      <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0, overflow: 'hidden' }}>
         <Sidebar />
-        <main className="flex-1 min-h-0 overflow-auto">
+        <main style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
           <Outlet />
         </main>
       </div>

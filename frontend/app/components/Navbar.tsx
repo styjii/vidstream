@@ -3,10 +3,68 @@ import { Link, NavLink, useNavigate, useFetcher, useRouteLoaderData } from 'reac
 import {
   Play, Search, Upload, RefreshCw, Settings,
   Wifi, Menu, X, Home, Clock, ClipboardList,
-  FolderOpen, Monitor,
+  FolderOpen, Monitor, ChevronRight,
 } from 'lucide-react'
 import type { loader as layoutLoader } from '../routes/_layout'
-import type { ScanResult } from '../types'
+import type { Category, ScanResult } from '../types'
+
+function DrawerCategoryTree({
+  cat,
+  depth = 0,
+  onClose,
+}: {
+  cat: Category
+  depth?: number
+  onClose: () => void
+}) {
+  const hasChildren = cat.children.length > 0
+  const [open, setOpen] = useState(false)
+
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-colors ${
+      isActive
+        ? 'bg-base-200 font-medium text-base-content'
+        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
+    }`
+
+  return (
+    <li>
+      <div className="flex items-center gap-0.5" style={{ paddingLeft: `${depth * 14}px` }}>
+        {hasChildren ? (
+          <button
+            className="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/40"
+            onClick={() => setOpen(o => !o)}
+          >
+            <ChevronRight
+              size={13}
+              className={`transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
+            />
+          </button>
+        ) : (
+          <span className="w-6.5 shrink-0" />
+        )}
+        <NavLink
+          to={`/?category=${cat.id}`}
+          className={linkClass}
+          onClick={onClose}
+          style={{ flex: 1 }}
+        >
+          <FolderOpen size={16} />
+          <span className="flex-1 truncate">{cat.name}</span>
+          <span className="badge badge-ghost badge-xs">{cat.total_video_count}</span>
+        </NavLink>
+      </div>
+
+      {hasChildren && open && (
+        <ul className="flex flex-col gap-0.5">
+          {cat.children.map(child => (
+            <DrawerCategoryTree key={child.id} cat={child} depth={depth + 1} onClose={onClose} />
+          ))}
+        </ul>
+      )}
+    </li>
+  )
+}
 
 export default function Navbar() {
   const [query, setQuery] = useState('')
@@ -32,9 +90,10 @@ export default function Navbar() {
   }
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-4 py-3 text-sm rounded-lg transition-colors ${isActive
-      ? 'bg-base-200 font-medium text-base-content'
-      : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
+    `flex items-center gap-3 px-4 py-3 text-sm rounded-lg transition-colors ${
+      isActive
+        ? 'bg-base-200 font-medium text-base-content'
+        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
     }`
 
   return (
@@ -60,7 +119,7 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Center — search bar (hidden on mobile) */}
+        {/* Center — search bar */}
         <div className="navbar-center flex-1 max-w-md px-2 sm:px-4 hidden sm:flex">
           <form onSubmit={handleSearch} className="w-full">
             <label className="input input-sm input-bordered flex items-center gap-2 w-full rounded-full">
@@ -101,21 +160,19 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* ── Mobile drawer overlay ── */}
+      {/* ── Mobile drawer ── */}
       {drawerOpen && (
         <div
           className="fixed inset-0 z-60 lg:hidden"
           onClick={() => setDrawerOpen(false)}
         >
-          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50" />
 
-          {/* Drawer panel */}
           <aside
             className="absolute left-0 top-0 bottom-0 w-72 bg-base-100 flex flex-col shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
-            {/* Drawer header */}
+            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-base-300">
               <Link
                 to="/"
@@ -136,7 +193,7 @@ export default function Navbar() {
               </button>
             </div>
 
-            {/* Search in drawer */}
+            {/* Search */}
             <div className="px-4 pt-3 pb-2">
               <form onSubmit={handleSearch}>
                 <label className="input input-sm input-bordered flex items-center gap-2 w-full rounded-full">
@@ -170,18 +227,16 @@ export default function Navbar() {
               <p className="text-xs text-base-content/40 px-4 pt-4 pb-1 uppercase tracking-wider">
                 Catégories
               </p>
-              {categories.map(cat => (
-                <NavLink
-                  key={cat.id}
-                  to={`/?category=${cat.id}`}
-                  className={linkClass}
-                  onClick={() => setDrawerOpen(false)}
-                >
-                  <FolderOpen size={17} />
-                  <span className="flex-1 truncate">{cat.name}</span>
-                  <span className="badge badge-ghost badge-xs">{cat.video_count}</span>
-                </NavLink>
-              ))}
+              <ul className="flex flex-col gap-0.5">
+                {categories.map(cat => (
+                  <DrawerCategoryTree
+                    key={cat.id}
+                    cat={cat}
+                    depth={0}
+                    onClose={() => setDrawerOpen(false)}
+                  />
+                ))}
+              </ul>
 
               <p className="text-xs text-base-content/40 px-4 pt-4 pb-1 uppercase tracking-wider">
                 Réseau
@@ -191,7 +246,7 @@ export default function Navbar() {
               </NavLink>
             </nav>
 
-            {/* LAN badge at bottom */}
+            {/* LAN badge */}
             <div className="px-4 py-3 border-t border-base-300">
               <div className="badge badge-success gap-1.5 font-medium text-xs">
                 <Wifi size={10} />
