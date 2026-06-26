@@ -79,7 +79,11 @@ export async function action({ request, params }: Route.ActionArgs) {
   const progress_sec = Number(formData.get('progress_sec'))
   const completed = formData.get('completed') === 'true'
 
-  await api.saveProgress(id, { progress_sec, completed })
+  try {
+    await api.saveProgress(id, { progress_sec, completed })
+  } catch {
+    // Silently ignore — progress save failure must not crash the player
+  }
   return { ok: true }
 }
 
