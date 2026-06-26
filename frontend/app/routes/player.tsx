@@ -137,13 +137,24 @@ export default function Player() {
   const [duration, setDuration] = useState(0)
   const lastSavedRef = useRef(0)
   const autoAdvancedRef = useRef(false)
+  const historyCreatedRef = useRef(false)
 
   useEffect(() => {
     setPlayed(0)
     setDuration(0)
     lastSavedRef.current = 0
     autoAdvancedRef.current = false
+    historyCreatedRef.current = false
   }, [video.id])
+
+  function handlePlay() {
+    if (historyCreatedRef.current) return
+    historyCreatedRef.current = true
+    fetcher.submit(
+      { progress_sec: '0', completed: 'false' },
+      { method: 'post' },
+    )
+  }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -186,8 +197,8 @@ export default function Player() {
 
       {/* ── Main player column ── */}
       <div className="flex-1 min-w-0 p-3 sm:p-5 xl:overflow-y-auto">
-        <Link to={`/?category=${video.category}`} className="btn btn-ghost btn-xs mb-3 gap-1.5 -ml-1">
-          <ArrowLeft size={14} /> {video.category_name}
+        <Link to="/" className="btn btn-ghost btn-xs mb-3 gap-1.5 -ml-1">
+          <ArrowLeft size={14} /> Retour
         </Link>
 
         {/* Video player */}
@@ -203,6 +214,7 @@ export default function Player() {
               if (el.duration) setPlayed(el.currentTime / el.duration)
             }}
             onDurationChange={(e) => setDuration(e.currentTarget.duration)}
+            onPlay={handlePlay}
             onEnded={handleEnded}
           />
         </div>

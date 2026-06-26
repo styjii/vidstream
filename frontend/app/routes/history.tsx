@@ -1,6 +1,6 @@
 import type { Route } from './+types/history'
-import { Link, useLoaderData } from 'react-router'
-import { ClipboardList, Play, CheckCircle } from 'lucide-react'
+import { Link, useLoaderData, useFetcher } from 'react-router'
+import { ClipboardList, Play, CheckCircle, Trash2 } from 'lucide-react'
 import { api, dedupeById } from '../services/api'
 import type { WatchHistory } from '../types'
 
@@ -11,6 +11,24 @@ export function meta(_: Route.MetaArgs) {
 export async function loader(): Promise<{ history: WatchHistory[] }> {
   const history = await api.getHistory()
   return { history: dedupeById(history) }
+}
+
+export async function action({ request }: Route.ActionArgs) {
+  const formData = await request.formData()
+  const intent = formData.get('intent')
+  const id = formData.get('id') as string
+
+  if (intent === 'delete') {
+    await api.deleteHistory(id)
+    return { ok: true }
+  }
+
+  if (intent === 'mark_complete') {
+    await api.updateHistory(id, { completed: true })
+    return { ok: true }
+  }
+
+  return { ok: false }
 }
 
 function formatProgress(sec: number): string {
@@ -30,7 +48,6 @@ function ProgressIndicator({ sec, completed }: { sec: number; completed: boolean
     )
   }
 
-  // Use a simple linear progress bar instead of radial-progress to avoid overflow issues
   const percent = Math.min(Math.round((sec / 5400) * 100), 100)
   return (
     <div className="flex flex-col items-end gap-1 shrink-0 w-14">
@@ -40,6 +57,60 @@ function ProgressIndicator({ sec, completed }: { sec: number; completed: boolean
           className="h-full rounded-full bg-error transition-all"
           style={{ width: `${percent}%` }}
         />
+      </div>
+    </div>
+  )
+}
+
+function HistoryEntry({ entry }: { entry: WatchHistory }) {
+  const fetcher = useFetcher()
+  const isDeleting = fetcher.state !== 'idle' && fetcher.formData?.get('intent') === 'delete'
+
+  return (
+    <div className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl bg-base-100 border border-base-300 min-w-0 transition-opacity ${isDeleting ? 'opacity-40 pointer-events-none' : ''}`}>
+      {/* Lien vers le player */}
+      <Link
+        to={`/player/${entry.video}`}
+        className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
+      >
+        <div className="w-9 h-9 rounded-full bg-base-200 flex items-center justify-center shrink-0">
+          <Play size={15} className="text-base-content/50" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium line-clamp-1">{entry.video_title}</p>
+          <p className="text-xs text-base-content/50 mt-0.5 truncate">
+            {entry.device_name} · {formatProgress(entry.progress_sec)}
+          </p>
+        </div>
+        <ProgressIndicator sec={entry.progress_sec} completed={entry.completed} />
+      </Link>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1 shrink-0 ml-1">
+        {!entry.completed && (
+          <fetcher.Form method="post">
+            <input type="hidden" name="intent" value="mark_complete" />
+            <input type="hidden" name="id" value={entry.id} />
+            <button
+              type="submit"
+              className="btn btn-ghost btn-xs btn-square text-success"
+              title="Marquer comme terminé"
+            >
+              <CheckCircle size={14} />
+            </button>
+          </fetcher.Form>
+        )}
+        <fetcher.Form method="post">
+          <input type="hidden" name="intent" value="delete" />
+          <input type="hidden" name="id" value={entry.id} />
+          <button
+            type="submit"
+            className="btn btn-ghost btn-xs btn-square text-error"
+            title="Supprimer de l'historique"
+          >
+            <Trash2 size={14} />
+          </button>
+        </fetcher.Form>
       </div>
     </div>
   )
@@ -62,27 +133,7 @@ export default function History() {
       ) : (
         <div className="flex flex-col gap-2">
           {history.map(entry => (
-            <Link
-              key={entry.id}
-              to={`/player/${entry.video}`}
-              className="flex items-center gap-3 p-3 sm:p-4 rounded-xl bg-base-100 border border-base-300 hover:bg-base-200 transition-colors min-w-0"
-            >
-              {/* Icon */}
-              <div className="w-9 h-9 rounded-full bg-base-200 flex items-center justify-center shrink-0">
-                <Play size={15} className="text-base-content/50" />
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium line-clamp-1">{entry.video_title}</p>
-                <p className="text-xs text-base-content/50 mt-0.5 truncate">
-                  {entry.device_name} · {formatProgress(entry.progress_sec)}
-                </p>
-              </div>
-
-              {/* Progress status */}
-              <ProgressIndicator sec={entry.progress_sec} completed={entry.completed} />
-            </Link>
+            <HistoryEntry key={entry.id} entry={entry} />
           ))}
         </div>
       )}

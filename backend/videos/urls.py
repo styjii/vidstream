@@ -50,8 +50,9 @@ urlpatterns = [
 
     # Devices
     path("devices/", views.device_list, name="device-list"),
-    
-    # History + progress
+
+    # History CRUD + progress
     path("history/", views.watch_history, name="watch-history"),
+    path("history/<uuid:pk>/", views.watch_history_detail, name="watch-history-detail"),
     path("videos/<uuid:pk>/progress/", views.save_progress, name="save-progress"),
 ]

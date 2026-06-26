@@ -350,22 +350,79 @@ def device_list(request):
 # ------------------------------------------------------------------ #
 
 
-@api_view(["GET"])
+@api_view(["GET", "POST"])
 def watch_history(request):
     """
-    Return watch history for the calling device.
-    Identified by IP address.
+    GET  — Liste tout l'historique du device appelant.
+    POST — Crée une entrée d'historique.
+           Body: { "video": "<uuid>", "progress_sec": 0, "completed": false }
     """
     device = get_or_create_device(request)
-    history = WatchHistory.objects.filter(device=device).select_related("video")
-    serializer = WatchHistorySerializer(history, many=True)
-    return Response(serializer.data)
+
+    if request.method == "GET":
+        history = WatchHistory.objects.filter(device=device).select_related("video")
+        serializer = WatchHistorySerializer(history, many=True)
+        return Response(serializer.data)
+
+    # POST — création
+    video_id = request.data.get("video")
+    if not video_id:
+        return Response(
+            {"erreur": "Le champ « video » est requis."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    video = get_object_or_404(Video, pk=video_id)
+
+    entry, created = WatchHistory.objects.get_or_create(
+        video=video,
+        device=device,
+        defaults={
+            "progress_sec": request.data.get("progress_sec", 0),
+            "completed": request.data.get("completed", False),
+        },
+    )
+    if not created:
+        return Response(
+            {"erreur": "Une entrée existe déjà pour cette vidéo. Utilisez PUT/PATCH pour la mettre à jour."},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    serializer = WatchHistorySerializer(entry)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
+def watch_history_detail(request, pk):
+    """
+    GET    — Détail d'une entrée d'historique.
+    PUT    — Remplacement complet.
+             Body: { "progress_sec": 120, "completed": true }
+    PATCH  — Mise à jour partielle (un ou plusieurs champs).
+    DELETE — Suppression de l'entrée.
+    """
+    device = get_or_create_device(request)
+    entry = get_object_or_404(WatchHistory, pk=pk, device=device)
+
+    if request.method == "GET":
+        return Response(WatchHistorySerializer(entry).data)
+
+    if request.method == "DELETE":
+        entry.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # PUT / PATCH
+    partial = request.method == "PATCH"
+    serializer = WatchHistorySerializer(entry, data=request.data, partial=partial)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["POST"])
 def save_progress(request, pk):
     """
-    Save or update playback progress for a video.
+    Raccourci pour mettre à jour la progression depuis le player.
     Body: { "progress_sec": 120, "completed": false }
     """
     video = get_object_or_404(Video, pk=pk)
