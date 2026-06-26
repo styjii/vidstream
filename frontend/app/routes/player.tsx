@@ -186,8 +186,8 @@ export default function Player() {
 
       {/* ── Main player column ── */}
       <div className="flex-1 min-w-0 p-3 sm:p-5 xl:overflow-y-auto">
-        <Link to="/" className="btn btn-ghost btn-xs mb-3 gap-1.5 -ml-1">
-          <ArrowLeft size={14} /> Retour
+        <Link to={`/?category=${video.category}`} className="btn btn-ghost btn-xs mb-3 gap-1.5 -ml-1">
+          <ArrowLeft size={14} /> {video.category_name}
         </Link>
 
         {/* Video player */}

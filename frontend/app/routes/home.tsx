@@ -69,7 +69,6 @@ function CategorySection({
   const hasVideos = catVideos.length > 0
   const hasChildren = cat.children.length > 0
 
-  // Ne rien afficher si la catégorie et ses descendants n'ont aucune vidéo
   if (cat.total_video_count === 0) return null
 
   return (
@@ -163,7 +162,6 @@ export default function Home() {
           <p className="text-xs text-base-content/40 mb-4">{cat.full_path}</p>
         )}
         {cat && cat.children.length > 0 ? (
-          // Vue catégorie avec sous-catégories
           <div className="mt-4 sm:mt-5">
             {/* Vidéos directes de la catégorie courante */}
             {videos.filter(v => v.category === cat.id).length > 0 && (
@@ -197,7 +195,6 @@ export default function Home() {
     </div>
   )
 
-  // Mode "all" — vue hiérarchique complète
   return (
     <div className="p-4 sm:p-6">
       {categories.map(cat => (
